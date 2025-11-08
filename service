@@ -18,13 +18,17 @@ from hosted import config
 
 session = requests.Session()
 headers = {
-    'User-Agent': 'info-beamer mastodon poller serial {}'.format(environ.get('SERIAL', 'unknown')),
+    'User-Agent': 'info-beamer bluesky poller serial {}'.format(environ.get('SERIAL', 'unknown')),
     'Accept': 'application/json'
 }
 
 def cache_image(url):
+    if not url:
+        return None
     image_url = urlparse(url)
     image_filename = image_url.path.split('/')[-1]
+    if not image_filename:
+        image_filename = url.split('/')[-1]
     if not isfile(image_filename):
         try:
             with open(image_filename, 'wb') as f:
@@ -32,65 +36,59 @@ def cache_image(url):
                 r.raise_for_status()
                 f.write(r.content)
         except Exception as e:
-            sys.stderr.write("[mastodon] exception while caching image {} - {}\n".format(url, e))
+            sys.stderr.write("[bluesky] exception while caching image {} - {}\n".format(url, e))
             return None
     return image_filename
 
-class MastodonPost:
+class BlueskyPost:
     def __init__(self, post):
         self.post = post
         self.profile_image = None
         self.attachment_image = None
 
     def _log(self, text):
-        sys.stderr.write("[mastodon] [toot {}] {}\n".format(self, text))
+        sys.stderr.write("[bluesky] [post {}] {}\n".format(self, text))
 
     def __str__(self):
-        return self.post.get('id', 0)
+        return self.post.get('cid', 'unknown')
 
     def cache_images(self):
-        self.profile_image = cache_image(self.post['account']['avatar_static'])
-        for attachment in self.post.get('media_attachments', set()):
-            if attachment['type'] == "image":
-                if attachment['meta']['original']['width'] > 2048 or attachment['meta']['original']['height'] > 2048:
-                    self.attachment_image = cache_image(attachment['preview_url'])
-                else:
-                    self.attachment_image = cache_image(attachment['url'])
-                break
+        # Cache profile avatar
+        avatar_url = self.post.get('author', {}).get('avatar', '')
+        if avatar_url:
+            self.profile_image = cache_image(avatar_url)
+        
+        # Cache media attachments
+        embed = self.post.get('embed', {})
+        embed_type = embed.get('$type', '')
+        
+        if embed_type == 'app.bsky.embed.images#view':
+            images = embed.get('images', [])
+            if images:
+                # Get the first image
+                image = images[0]
+                # Use fullsize image, but check dimensions if available
+                image_url = image.get('fullsize', '')
+                if image_url:
+                    self.attachment_image = cache_image(image_url)
+        
+        elif embed_type == 'app.bsky.embed.external#view':
+            external = embed.get('external', {})
+            thumb_url = external.get('thumb', '')
+            if thumb_url:
+                self.attachment_image = cache_image(thumb_url)
 
     @property
     def text(self):
-        string = self.post["content"]
-        # I know, this could be done using HTMLParser - but this opens a can
-        # of worms because we're dealing with python2.7 and unicode.
-        for source, replacement in {
-                '&nbsp;': ' ',
-                '&#160;': ' ',
-                '&amp;': '&',
-                '&#38;': '&',
-                '&gt;': '>',
-                '&#62;': '>', 
-                '&lt;': '<',
-                '&#60;':  '<', 
-                '&quot;': '"',
-                '&#34;': '"',
-                '&apos;': '\'',
-                '&#39;': '\'',
-                '<br>': ' ',
-                '<br />': ' ',
-                '</p><p>': ' ',
-                }.items():
-            string = string.replace(source, replacement)
-        string = re.sub('<[^>]+>', '', string)
-        return string
+        # Bluesky text is plain text, but we still clean it up
+        string = self.post.get('record', {}).get('text', '')
+        # Remove excessive whitespace
+        string = re.sub(r'\s+', ' ', string)
+        return string.strip()
 
     @property
     def account_name(self):
-        acct = self.post['account']['acct']
-        if '@' not in acct:
-            baseurl = urlparse(config.baseurl)
-            return "{}@{}".format(acct, baseurl.netloc)
-        return acct
+        return self.post.get('author', {}).get('handle', 'unknown.bsky.social')
 
     @property
     def is_from_blocked_account(self):
@@ -115,34 +113,52 @@ class MastodonPost:
 
     @property
     def created_timestamp(self):
-        date_time_obj = datetime.strptime(self.post['created_at'][0:-1], '%Y-%m-%dT%H:%M:%S.%f')
-        return int(time.mktime(date_time_obj.timetuple()))
+        created_at = self.post.get('record', {}).get('createdAt', '')
+        if not created_at:
+            return int(time.time())
+        
+        try:
+            # Bluesky uses ISO 8601 format with timezone
+            # Example: 2024-01-01T12:00:00.000Z
+            if created_at.endswith('Z'):
+                date_time_obj = datetime.strptime(created_at, '%Y-%m-%dT%H:%M:%S.%fZ')
+            else:
+                # Handle other timezone formats if needed
+                date_time_obj = datetime.strptime(created_at.split('+')[0].split('.')[0], '%Y-%m-%dT%H:%M:%S')
+            return int(time.mktime(date_time_obj.timetuple()))
+        except Exception as e:
+            self._log("Error parsing timestamp {}: {}".format(created_at, e))
+            return int(time.time())
 
     @property
     def ignore_post(self):
-        if 'content' not in self.post:
+        text = self.post.get('record', {}).get('text', '')
+        
+        if not text:
             self._log("Garbage: no content")
             return True
-        if config.filter_garbage and ('@twitter.com' in self.post['content'] or "x.com/" in self.post["content"] or 'nitter.net/' in self.post['content']):
-            self._log("Filtered: from Twitter")
+        
+        if config.filter_garbage and ('@twitter.com' in text or "x.com/" in text or 'nitter.net/' in text):
+            self._log("Filtered: mentions Twitter/X")
             return True
-        if config.filter_spoilertexttoots and self.post['spoiler_text']:
-            self._log("Filtered: has spoiler")
-            return True
+        
         if self.is_from_blocked_account:
             self._log("Filtered: from blocked account")
             return True
+        
         return False
 
 
-class MastodonFetcher:
+class BlueskyFetcher:
     def __init__(self):
         self.session = requests.Session()
-        self.session.headers =  {
-            'User-Agent': 'info-beamer mastodon poller serial {}'.format(environ.get('SERIAL', 'unknown')),
+        self.session.headers = {
+            'User-Agent': 'info-beamer bluesky poller serial {}'.format(environ.get('SERIAL', 'unknown')),
             'Accept': 'application/json'
         }
-        self.not_before = int(time.mktime(datetime.strptime(config.not_before, "%Y-%m-%d").timetuple()))
+        # Handle missing not_before config with a sensible default
+        not_before_str = getattr(config, 'not_before', '2024-01-01')
+        self.not_before = int(time.mktime(datetime.strptime(not_before_str, "%Y-%m-%d").timetuple()))
         self.posts = []
 
     def _log(self, something, tag=None):
@@ -150,40 +166,61 @@ class MastodonFetcher:
             something = repr(something)
         if tag is not None:
             something = "[#{}] {}".format(tag, something)
-        sys.stderr.write("[mastodon] {}\n".format(something))
+        sys.stderr.write("[bluesky] {}\n".format(something))
 
     def _fetch(self, tag):
         self._log("starting _fetch()", tag=tag)
-        url = "{baseurl}/api/v1/timelines/tag/{tag}?limit={limit}".format(
-            baseurl=config.baseurl,
-            tag=tag,
-            limit=config.count,
-        )
-        r = session.get(url)
+        
+        # Bluesky public API endpoint
+        url = "https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts"
+        
+        params = {
+            'tag': tag,  # Bluesky expects tag without # prefix
+            'limit': min(int(config.count), 100),  # Max 100 posts
+            'sort': 'latest'  # Get most recent posts
+        }
+        
+        r = self.session.get(url, params=params)
         self._log("http status code was {}".format(r.status_code), tag=tag)
         r.raise_for_status()
-        return r.json()
+        
+        response_data = r.json()
+        posts = response_data.get('posts', [])
+        self._log("fetched {} posts".format(len(posts)), tag=tag)
+        
+        return posts
 
     def fetch_and_parse(self, tag):
         try:
-            toots = self._fetch(tag)
-            for post in toots:
-                toot = MastodonPost(post)
-                if toot in self.posts:
-                    self._log("ignoring {} because duplicate".format(toot), tag=tag)
+            # Remove # prefix if present
+            tag = tag.lstrip('#')
+            
+            posts = self._fetch(tag)
+            for post_data in posts:
+                post = BlueskyPost(post_data)
+                
+                # Check for duplicates by CID
+                if any(p.post.get('cid') == post.post.get('cid') for p in self.posts):
+                    self._log("ignoring {} because duplicate".format(post), tag=tag)
                     continue
-                if toot.ignore_post:
-                    # reason already printed by MastodonPost
+                
+                if post.ignore_post:
+                    # reason already printed by BlueskyPost
                     continue
-                if toot.created_timestamp < self.not_before:
-                    self._log("ignoring {} because it was created too long ago (is {}, want {})".format(toot, toot.created_timestamp, self.not_before), tag=tag)
-                self.posts.append(toot)
+                
+                if post.created_timestamp < self.not_before:
+                    self._log("ignoring {} because it was created too long ago (is {}, want {})".format(
+                        post, post.created_timestamp, self.not_before), tag=tag)
+                    continue
+                
+                self.posts.append(post)
         except Exception as e:
-            self._log(e, tag=tag)
+            self._log("Exception during fetch_and_parse: {}".format(e), tag=tag)
+            traceback.print_exc()
 
     def cache_and_cleanup_images(self):
         images = {
-            'mastodon-logo.png',
+            'bluesky-logo.png',
             'node.png',
             'package.png',
             'package-header.jpg'
@@ -210,16 +247,21 @@ class MastodonFetcher:
     def dump_json(self):
         out = []
         for post in self.posts:
+            display_name = post.post.get('author', {}).get('displayName', '')
+            if not display_name:
+                display_name = post.account_name
+            
             out.append({
                 'created_at': post.created_timestamp,
                 'content': post.text,
                 'account': {
                     'acct': post.account_name,
-                    'display_name': post.post['account']['display_name'],
+                    'display_name': display_name,
                     'avatar_static': post.profile_image,
                 },
                 'media_attachment': post.attachment_image or '',
             })
+        
         self._log("have gotten {} posts in total".format(len(out)))
         if len(out) > 0:
             with open('tootlist.json', 'wb') as f:
@@ -237,7 +279,7 @@ def main():
 
     while 1:
         try:
-            poller = MastodonFetcher()
+            poller = BlueskyFetcher()
             for tag in config.tag.split(','):
                 poller.fetch_and_parse(tag.strip())
             poller.cache_and_cleanup_images()

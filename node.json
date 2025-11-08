@@ -1,66 +1,51 @@
 {
-    "name": "Plugin: Mastodon Tag Timeline",
+    "name": "Plugin: Bluesky Tag Timeline",
     "permissions": {
-        "network": "Needs to access public API of a Mastodon instance"
+        "network": "Needs to access public Bluesky API"
     },
-    "deferred": [
-        "content.lua"
-    ],
     "options": [{
-        "title": "Mastodon Tag Timeline",
+        "title": "Bluesky Tag Timeline",
         "type": "section"
-    }, {
-        "title": "Mastodon Instance Base URL",
-        "ui_width": 12,
-        "name": "baseurl",
-        "type": "string",
-        "default": "https://mastodon.social"
     }, {
         "title": "Tag Query",
         "ui_width": 12,
         "name": "tag",
         "type": "string",
         "default": "infobeamer",
-        "hint": "Multiple tags can be separated by commas, no spaces. Don't put a # in there, mastodon tags are without them"
+        "hint": "Multiple tags can be separated by commas, no spaces. Don't put a # in there, Bluesky tags are without them"
     }, {
         "title": "Filter Accounts",
         "ui_width": 12,
         "name": "filter_accounts",
-        "hint": "Commaseparated list of accounts to filter out filter out from tootlist",
+        "hint": "Comma-separated list of Bluesky handles to filter out (e.g., spam.bsky.social,bot.bsky.social)",
         "type": "string",
         "default": ""
     }, {
         "title": "Filter Garbage",
         "ui_width": 3,
         "name": "filter_garbage",
-        "hint": "Remove toots that are crossposts from birdsite",
+        "hint": "Remove posts that are crossposts from Twitter/X",
         "type": "boolean",
         "default": true
     }, {
-        "title": "Filter toots with content warnings",
-        "ui_width": 3,
-        "name": "filter_spoilertexttoots",
-        "hint": "Remove toots that have content warnings",
-        "type": "boolean",
-        "default": false
-    }, {
-        "title": "Number of toots",
+        "title": "Number of posts",
         "ui_width": 3,
         "name": "count",
         "type": "select",
         "options": [
-            [10, "10 toots"],
+            [10, "10 posts"],
             [20, "20 (default)"],
-            [40, "40 toots"],
-            [80, "80 toots"]
+            [40, "40 posts"],
+            [80, "80 posts"],
+            [100, "100 posts (max)"]
         ],
         "default": 20
     }, {
-        "title": "Exlude toots before",
+        "title": "Exclude posts before",
         "ui_width": 3,
         "name": "not_before",
         "type": "string",
-        "default": "2021-01-01",
+        "default": "2024-01-01",
         "hint": "Please use the YYYY-MM-DD format"
     }, {
         "title": "Poll interval",
@@ -77,7 +62,7 @@
         "title": "Broadcast to scroller",
         "ui_width": 3,
         "name": "include_in_scroller",
-        "hint": "Add all toots as content to the scroller",
+        "hint": "Add all posts as content to the scroller",
         "type": "boolean",
         "default": true
     }, {
@@ -109,13 +94,13 @@
         "type": "font",
         "default": "default-font.ttf"
     }, {
-        "title": "Toot Text Font",
+        "title": "Post Text Font",
         "ui_width": 9,
         "name": "text_font",
         "type": "font",
         "default": "default-font.ttf"
     }, {
-        "title": "Toot Text Size",
+        "title": "Post Text Size",
         "ui_width": 3,
         "name": "text_size",
         "type": "integer",
@@ -130,7 +115,7 @@
         "type": "color",
         "default": [1,1,1,1]
     }, {
-        "title": "Toot Color",
+        "title": "Post Color",
         "ui_width": 3,
         "name": "toot_color",
         "type": "color",
@@ -175,7 +160,7 @@
         ],
         "default": "over"
     }, {
-        "title": "Toot Text",
+        "title": "Post Text",
         "ui_width": 3,
         "name": "text_over_under",
         "type": "select",

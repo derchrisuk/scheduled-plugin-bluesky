@@ -1,7 +1,7 @@
 {
-    "name": "Mastodon Timeline",
-    "author": "kunsi, sophie, dividuum",
-    "desc": "Shows toots from a tag timeline, based on the Twitter Module by fw@dividuum.de",
+    "name": "Bluesky Timeline",
+    "author": "kunsi, sophie, dividuum, derchris",
+    "desc": "Shows posts from a tag timeline, based on the Mastodon Timeline by sophie, based on the Twitter Module by fw@dividuum.de",
     "nesting": {
         "parents": ["scheduled-plugin"],
         "childs": []
