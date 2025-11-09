@@ -20,7 +20,7 @@ local text_over_under
 local profile_over_under
 local ignore_non_media_posts = false
 local logo = resource.load_image{
-    file = api.localized "mastodon-logo.png"
+    file = api.localized "bluesky-logo.png"
 }
 local max_text_lines = 10
 
