@@ -315,9 +315,9 @@ class BlueskyFetcher:
         
         self._log("have gotten {} posts in total".format(len(out)))
         if len(out) > 0:
-            with open('tootlist.json', 'wb') as f:
+            with open('postlist.json', 'wb') as f:
                 f.write(json.dumps(out, ensure_ascii=False).encode('utf8'))
-            self._log("wrote {} posts to tootlist.json".format(len(out)))
+            self._log("wrote {} posts to postlist.json".format(len(out)))
 
 
 def main():

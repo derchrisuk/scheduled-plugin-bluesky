@@ -28,7 +28,7 @@
   "tag": "rc3",
   "text_over_under": "over",
   "max_text_lines": "10",
-  "toot_color": {
+  "post_color": {
     "a": 1,
     "b": 1,
     "g": 1,

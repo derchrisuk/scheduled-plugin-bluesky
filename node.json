@@ -132,7 +132,7 @@
     }, {
         "title": "Post Color",
         "ui_width": 3,
-        "name": "toot_color",
+        "name": "post_color",
         "type": "color",
         "default": [1,1,1,1]
     }, {

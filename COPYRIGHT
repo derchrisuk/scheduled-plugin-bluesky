@@ -26,10 +26,11 @@ Unless otherwise (see below) noted:
     OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+node.png
 package.png
-mastodon-logo.png
-    Jin Nguyen, AGPL http://www.gnu.org/licenses/agpl.html, via Wikimedia Commons
-    https://commons.wikimedia.org/wiki/File:Mastodon_Logotype_(Simple).svg
+bluesky-logo.png
+    Eric Bailey, Public Domain Eric Bailey, via Wikimedia Commons
+    https://commons.wikimedia.org/wiki/File:Bluesky_Logo.svg
 
 default-font.ttf
     Originally called OpenSansEmoji.ttf
@@ -37,8 +38,7 @@ default-font.ttf
     https://github.com/MorbZ/OpenSansEmoji
 
 package-header.jpg
-    CC BY-SA 4.0
-    https://docs.joinmastodon.org/elephant.svg
+    https://bsky.social
 
 hosted.py / hosted.js
     Part of the info-beamer hosted SDK

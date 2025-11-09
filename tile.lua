@@ -9,7 +9,7 @@ local show_logo = true
 local char_per_sec = 7
 local include_in_scroller = true
 local shading
-local toot_color, profile_color
+local post_color, profile_color
 local name_font
 local info_font
 local text_font
@@ -82,24 +82,24 @@ local function only_contains_hashtags(text)
     return true
 end
 
-function M.updated_tootlist_json(toots)
+function M.updated_postlist_json(posts)
     playlist = {}
 
     local scroller = {}
-    for idx = 1, #toots do
-        local toot = toots[idx]
+    for idx = 1, #posts do
+        local post = postss[idx]
 
         local ok, profile, image
 
-        ok, profile = pcall(resource.open_file, api.localized(toot.account.avatar_static))
+        ok, profile = pcall(resource.open_file, api.localized(post.account.avatar_static))
         if not ok then
-            print("cannot use this toot. profile image missing", profile)
+            print("cannot use this post. profile image missing", profile)
             profile = nil
         end
 
-        if toot.media_attachment ~= '' then
+        if post.media_attachment ~= '' then
             -- TODO: load more than only the first image
-            ok, image = pcall(resource.open_file, api.localized(toot.media_attachment))
+            ok, image = pcall(resource.open_file, api.localized(post.media_attachment))
             if not ok then
                 print("cannot open image", image)
                 image = nil
@@ -109,18 +109,18 @@ function M.updated_tootlist_json(toots)
         if profile then
             if not ignore_non_media_posts or image then
                 playlist[#playlist+1] = {
-                    acct = toot.account.acct,
-                    display_name = toot.account.display_name,
-                    text = toot.content,
+                    acct = post.account.acct,
+                    display_name = post.account.display_name,
+                    text = post.content,
                     profile = profile,
                     image = image,
-                    created_at = toot.created_at,
+                    created_at = post.created_at,
                 }
-                print("toot created at" .. toot.created_at)
+                print("post created at" .. post.created_at)
             end
-            if include_in_scroller and not only_contains_hashtags(toot.content) then
+            if include_in_scroller and not only_contains_hashtags(post.content) then
                 scroller[#scroller+1] = {
-                    text = "@" .. toot.account.acct .. ": " .. toot.content,
+                    text = "@" .. post.account.acct .. ": " .. post.content,
                     image = profile,
                 }
             end
@@ -141,7 +141,7 @@ function M.updated_config_json(config)
 
     include_in_scroller = config.include_in_scroller
     show_logo = config.show_logo
-    toot_color = config.toot_color
+    post_color = config.post_color
     profile_color = config.profile_color
     margin = config.margin
     text_over_under = config.text_over_under
@@ -158,7 +158,7 @@ function M.updated_config_json(config)
     node.gc()
 end
 
-local toot_gen = util.generator(function()
+local post_gen = util.generator(function()
     return playlist
 end)
 
@@ -168,10 +168,10 @@ function M.task(starts, ends, config, x1, y1, x2, y2)
 
     print("ACTUAL SCREEN SIZE " .. boundingbox_width .. "x" .. boundingbox_height)
 
-    local toot = toot_gen.next()
+    local post = post_gen.next()
 
     local profile = resource.load_image{
-        file = toot.profile:copy(),
+        file = post.profile:copy(),
         mipmap = true,
     }
 
@@ -179,14 +179,14 @@ function M.task(starts, ends, config, x1, y1, x2, y2)
 
     local image, video
 
-    if toot.image then
+    if post.image then
         image = resource.load_image{
-            file = toot.image:copy(),
+            file = post.image:copy(),
         }
     end
     api.wait_t(starts-0.3)
 
-    local age = api.clock.unix() - toot.created_at
+    local age = api.clock.unix() - post.created_at
     if age < 100 then
         age = string.format("%ds", age)
     elseif age < 3600 then
@@ -203,11 +203,11 @@ function M.task(starts, ends, config, x1, y1, x2, y2)
     local E = ends
 
     local function mk_profile_box(x, y)
-        local name = toot.acct
-        if toot.display_name ~= '' then
-            name = toot.display_name
+        local name = post.acct
+        if post.display_name ~= '' then
+            name = post.display_name
         end
-        local info = "@"..toot.acct..", "..age.." ago"
+        local info = "@"..post.acct..", "..age.." ago"
 
         local profile_image_size = name_size*1.6
 
@@ -241,7 +241,7 @@ function M.task(starts, ends, config, x1, y1, x2, y2)
     end
 
     local lines = wrap(
-        toot.text, text_font, text_size, boundingbox_width-2*margin
+        post.text, text_font, text_size, boundingbox_width-2*margin
     )
 
     local actual_lines
@@ -274,7 +274,7 @@ function M.task(starts, ends, config, x1, y1, x2, y2)
             a.add(anims.moving_font(S, E, text_font,
                 x+margin, y,
                 line, text_size,
-                toot_color.r, toot_color.g, toot_color.b, toot_color.a
+                post_color.r, post_color.g, post_color.b, post_color.a
             ))
             S = S+0.1
             y = y+text_size
