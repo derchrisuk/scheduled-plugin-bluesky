@@ -218,7 +218,7 @@ class BlueskyFetcher:
         url = "https://bsky.social/xrpc/app.bsky.feed.searchPosts"
         
         params = {
-            'q': '#{}'.format(tag),  # Include # symbol in query
+            'q': '{}'.format(tag),  # Do not Include # symbol in query
             'limit': min(int(config.count), 100),  # Max 100 posts
             'sort': 'latest'  # Get most recent posts
         }
@@ -243,7 +243,7 @@ class BlueskyFetcher:
 
     def fetch_and_parse(self, tag):
         try:
-            # Remove # prefix if present (we'll add it back in _fetch)
+            # Remove # prefix if present
             tag = tag.lstrip('#')
             
             posts = self._fetch(tag)
