@@ -87,7 +87,7 @@ function M.updated_postlist_json(posts)
 
     local scroller = {}
     for idx = 1, #posts do
-        local post = postss[idx]
+        local post = posts[idx]
 
         local ok, profile, image
 
