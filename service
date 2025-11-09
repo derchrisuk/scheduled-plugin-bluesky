@@ -160,6 +160,8 @@ class BlueskyFetcher:
         not_before_str = getattr(config, 'not_before', '2024-01-01')
         self.not_before = int(time.mktime(datetime.strptime(not_before_str, "%Y-%m-%d").timetuple()))
         self.posts = []
+        self.access_token = None
+        self.auth_expires = 0
 
     def _log(self, something, tag=None):
         if not isinstance(something, str):
@@ -168,20 +170,69 @@ class BlueskyFetcher:
             something = "[#{}] {}".format(tag, something)
         sys.stderr.write("[bluesky] {}\n".format(something))
 
+    def authenticate(self):
+        """Authenticate with Bluesky and get access token"""
+        # Check if we have valid credentials in config
+        if not hasattr(config, 'bluesky_handle') or not hasattr(config, 'bluesky_app_password'):
+            self._log("ERROR: bluesky_handle and bluesky_app_password must be configured!")
+            raise Exception("Missing Bluesky credentials in config")
+        
+        # Check if we already have a valid token
+        if self.access_token and time.time() < self.auth_expires:
+            self._log("using existing valid access token")
+            return self.access_token
+        
+        self._log("authenticating with Bluesky...")
+        
+        auth_url = "https://bsky.social/xrpc/com.atproto.server.createSession"
+        auth_data = {
+            'identifier': config.bluesky_handle,
+            'password': config.bluesky_app_password
+        }
+        
+        try:
+            r = self.session.post(auth_url, json=auth_data)
+            self._log("auth response status: {}".format(r.status_code))
+            r.raise_for_status()
+            
+            auth_response = r.json()
+            self.access_token = auth_response.get('accessJwt')
+            
+            # Tokens typically last 2 hours, refresh after 1.5 hours to be safe
+            self.auth_expires = time.time() + (90 * 60)
+            
+            self._log("authentication successful!")
+            return self.access_token
+            
+        except Exception as e:
+            self._log("authentication failed: {}".format(e))
+            raise
+
     def _fetch(self, tag):
         self._log("starting _fetch()", tag=tag)
         
-        # Bluesky public API endpoint
-        url = "https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts"
+        # Ensure we're authenticated
+        self.authenticate()
+        
+        # Use authenticated endpoint (bsky.social, not public.api.bsky.app)
+        url = "https://bsky.social/xrpc/app.bsky.feed.searchPosts"
         
         params = {
-            'tag': tag,  # Bluesky expects tag without # prefix
+            'q': '#{}'.format(tag),  # Include # symbol in query
             'limit': min(int(config.count), 100),  # Max 100 posts
             'sort': 'latest'  # Get most recent posts
         }
         
-        r = self.session.get(url, params=params)
+        # Add authorization header
+        headers = {
+            'Authorization': 'Bearer {}'.format(self.access_token)
+        }
+        
+        self._log("fetching with params: {}".format(params), tag=tag)
+        
+        r = self.session.get(url, params=params, headers=headers)
         self._log("http status code was {}".format(r.status_code), tag=tag)
+        
         r.raise_for_status()
         
         response_data = r.json()
@@ -192,7 +243,7 @@ class BlueskyFetcher:
 
     def fetch_and_parse(self, tag):
         try:
-            # Remove # prefix if present
+            # Remove # prefix if present (we'll add it back in _fetch)
             tag = tag.lstrip('#')
             
             posts = self._fetch(tag)

@@ -7,6 +7,20 @@
         "title": "Bluesky Tag Timeline",
         "type": "section"
     }, {
+        "title": "Bluesky Handle",
+        "ui_width": 6,
+        "name": "bluesky_handle",
+        "type": "string",
+        "default": "",
+        "hint": "Your full Bluesky handle (e.g., yourname.bsky.social)"
+    }, {
+        "title": "Bluesky App Password",
+        "ui_width": 6,
+        "name": "bluesky_app_password",
+        "type": "string",
+        "default": "",
+        "hint": "Create an app password in Bluesky Settings → App Passwords"
+    }, {
         "title": "Tag Query",
         "ui_width": 12,
         "name": "tag",
