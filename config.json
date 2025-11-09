@@ -1,9 +1,7 @@
 {
-  "baseurl": "https://chaos.social",
   "count": 20,
-  "filter_accounts": "feditrends@mastodont.cat",
+  "filter_accounts": "",
   "filter_garbage": true,
-  "filter_spoilertexttoots": true,
   "font": {
     "asset_name": "default-font.ttf",
     "filename": "default-font.ttf"
@@ -11,21 +9,17 @@
   "font_size": 70,
   "include_in_scroller": true,
   "margin": 10,
+  "not_before": "2024-01-01",
   "opt_0": null,
   "opt_9": null,
-  "poll_interval": 1,
+  "poll_interval": 5,
   "profile_color": {
     "a": 1,
     "b": 1,
     "g": 1,
     "hex": "ffffff",
     "r": 1,
-    "rgba": [
-      1,
-      1,
-      1,
-      1
-    ]
+    "rgba": [1, 1, 1, 1]
   },
   "profile_over_under": "over",
   "shading": 0,
@@ -38,11 +32,6 @@
     "g": 1,
     "hex": "ffffff",
     "r": 1,
-    "rgba": [
-      1,
-      1,
-      1,
-      1
-    ]
+    "rgba": [1, 1, 1, 1]
   }
 }
